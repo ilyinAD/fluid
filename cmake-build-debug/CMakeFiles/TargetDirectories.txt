@@ -1,0 +1,3 @@
+/mnt/c/MyDoc/HSEprogramming/fluid/fluid/cmake-build-debug/CMakeFiles/fluid.dir
+/mnt/c/MyDoc/HSEprogramming/fluid/fluid/cmake-build-debug/CMakeFiles/edit_cache.dir
+/mnt/c/MyDoc/HSEprogramming/fluid/fluid/cmake-build-debug/CMakeFiles/rebuild_cache.dir
