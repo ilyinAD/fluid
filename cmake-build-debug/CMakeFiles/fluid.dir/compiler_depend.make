@@ -451,10 +451,12 @@ CMakeFiles/fluid.dir/fluid.cpp.o: ../fluid.cpp \
   /usr/include/c++/11/source_location \
   /usr/include/c++/11/syncstream \
   /usr/include/c++/11/version \
-  ../FluidSim.h \
+  ../oldfiles/FluidSim.h \
   ../Fixed.h \
   ../FastFixed.h \
-  ../SmartFluidSim.h
+  ../Fixed.h \
+  ../SmartFluidSim.h \
+  ../Fixed.h
 
 
 ../SmartFluidSim.h:
@@ -462,8 +464,6 @@ CMakeFiles/fluid.dir/fluid.cpp.o: ../fluid.cpp \
 ../FastFixed.h:
 
 ../Fixed.h:
-
-../FluidSim.h:
 
 /usr/include/c++/11/version:
 
@@ -884,6 +884,8 @@ CMakeFiles/fluid.dir/fluid.cpp.o: ../fluid.cpp \
 /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h:
 
 /usr/include/x86_64-linux-gnu/bits/local_lim.h:
+
+../oldfiles/FluidSim.h:
 
 /usr/include/c++/11/cerrno:
 

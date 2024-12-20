@@ -17,9 +17,7 @@ template <size_t N, size_t K>
 class FastFixed {
     static constexpr size_t AdjustedN = (N <= 8) ? 8 : (N <= 16) ? 16 : (N <= 32) ? 32 : 64;
     static_assert(K < AdjustedN, "K must be less than the adjusted N");
-    static constexpr std::size_t kNValue = N;
-    static constexpr std::size_t kKValue = K;
-    static constexpr bool kFast          = true;
+
     using storage_type = std::conditional_t<AdjustedN == 8, int_fast8_t,
             std::conditional_t<AdjustedN == 16, int_fast16_t,
                     std::conditional_t<AdjustedN == 32, int_fast32_t, int_fast64_t>>>;
@@ -29,6 +27,9 @@ class FastFixed {
     constexpr static storage_type scaling_factor = 1ULL << K;
 
 public:
+    static constexpr std::size_t kNValue = N;
+    static constexpr std::size_t kKValue = K;
+    static constexpr bool kFast          = true;
     constexpr FastFixed(int value) : v(value << K) {}
     constexpr FastFixed(float value) : v(static_cast<storage_type>(value * scaling_factor)) {}
     constexpr FastFixed(double value) : v(static_cast<storage_type>(value * scaling_factor)) {}
@@ -161,6 +162,14 @@ public:
 
     friend std::ostream& operator<<(std::ostream& out, FastFixed x) {
         return out << static_cast<double>(x.v) / scaling_factor;
+    }
+
+    explicit operator float() const {
+        return static_cast<float>(v) / scaling_factor;
+    }
+
+    explicit operator double() const {
+        return static_cast<double>(v) / scaling_factor;
     }
 
     constexpr storage_type raw_value() const {

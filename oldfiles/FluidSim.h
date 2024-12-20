@@ -4,7 +4,7 @@
 
 #ifndef FLUID_FLUIDSIM_H
 #define FLUID_FLUIDSIM_H
-#include "Fixed.h"
+#include "../Fixed.h"
 //#include "FastFixed.h"
 
 

@@ -39,11 +39,9 @@ constexpr std::array<pair<int, int>, 4> deltas{{{-1, 0}, {1, 0}, {0, -1}, {0, 1}
 
 template <size_t N, size_t K>
 class Fixed {
-    static_assert(N > K, "Number of bits for the integer part must be greater than fractional part.");
-    static_assert(N == 8 || N == 16 || N == 32 || N == 64, "Supported sizes are 8, 16, 32, 64 bits.");
-    static constexpr std::size_t kNValue = N;
-    static constexpr std::size_t kKValue = K;
-    static constexpr bool kFast          = false;
+    //static_assert(N > K, "Number of bits for the integer part must be greater than fractional part.");
+    //static_assert(N == 8 || N == 16 || N == 32 || N == 64, "Supported sizes are 8, 16, 32, 64 bits.");
+
     using storage_type = typename std::conditional<N == 8, int8_t,
             typename std::conditional<N == 16, int16_t,
                     typename std::conditional<N == 32, int32_t, int64_t>::type>::type>::type;
@@ -53,6 +51,9 @@ class Fixed {
     constexpr static storage_type scaling_factor = 1ULL << K;
 
 public:
+    static constexpr std::size_t kNValue = N;
+    static constexpr std::size_t kKValue = K;
+    static constexpr bool kFast          = false;
     constexpr Fixed(int value) : v(value << K) {}
     constexpr Fixed(float value) : v(static_cast<storage_type>(value * scaling_factor)) {}
     constexpr Fixed(double value) : v(static_cast<storage_type>(value * scaling_factor)) {}
@@ -184,6 +185,14 @@ public:
 
     friend std::ostream& operator<<(std::ostream& out, Fixed x) {
         return out << static_cast<double>(x.v) / scaling_factor;
+    }
+
+    explicit operator float() const {
+        return static_cast<float>(v) / scaling_factor;
+    }
+
+    explicit operator double() const {
+        return static_cast<double>(v) / scaling_factor;
     }
 
     constexpr storage_type raw_value() const {

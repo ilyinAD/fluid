@@ -1,56 +1,59 @@
+//гуглил гптшил говнокодил, так как на лекциях ничего подобного не было(, но вроде разобрался и могу пояснить как тут все работает)
 #include <bits/stdc++.h>
-#include "FluidSim.h"
+#include "oldfiles/FluidSim.h"
 #include "SmartFluidSim.h"
 using namespace std;
+#define FLOAT            float
+#define DOUBLE           double
+#define FAST_FIXED(N, K) FastFixed<N, K>
+#define FIXED(N, K)      Fixed<N, K>
 
-////#define SIZES "S(1, 1), S(2, 2)"
-//#define S(x, y) SizePair<x, y>
-//struct SizePair {
-//    int first;
-//    int second;
-//};
-//
-//#ifdef SIZES
-//    bool is_static = 1;
-//    SizePair<int, int> q = SIZES;
-//    //const string sizes_str = SIZES;
-//    //vector<SizePair> sizes_str = SIZES;
-//#else
-//    bool is_static = 0;
-//    SizePair<int, int> q;
-//    //vector<SizePair> sizes_str;
-//#endif
-//constexpr size_t N = 36, M = 84;
-// constexpr size_t N = 14, M = 5;
+#define STRINGIFY_EXACT_NO_EVAL(expr) #expr
 
-// char field[N][M + 1] = {
-//     "#####",
-//     "#.  #",
-//     "#.# #",
-//     "#.# #",
-//     "#.# #",
-//     "#.# #",
-//     "#.# #",
-//     "#.# #",
-//     "#...#",
-//     "#####",
-//     "#   #",
-//     "#   #",
-//     "#   #",
-//     "#####",
-// };
+inline constexpr std::string_view kFloatTypeName   = STRINGIFY_EXACT_NO_EVAL(FLOAT);
+inline constexpr std::string_view kDoubleTypeName  = STRINGIFY_EXACT_NO_EVAL(DOUBLE);
+inline constexpr std::string_view kFastFixedPrefix = "FAST_FIXED(";
+inline constexpr std::string_view kFastFixedSuffix = ")";
+inline constexpr std::string_view kFixedPrefix     = "FIXED(";
+inline constexpr std::string_view kFixedSuffix     = ")";
 
+#undef STRINGIFY_EXACT_NO_EVAL
 
 template <class... Types>
-struct TypesList;
+struct ListOfTypes;
 
-struct SizePair {
+template <std::size_t I, class Type, class... Types>
+struct TypesListGetAtHelper1 {
+    static_assert(I < 1 + sizeof...(Types));
+    using type = typename TypesListGetAtHelper1<I - 1, Types...>::type;
+};
+
+template <class Type, class... Types>
+struct TypesListGetAtHelper1<0, Type, Types...> {
+    using type = Type;
+};
+
+template <std::size_t I, class TypesListType>
+struct TypesListGetAtHelper2;
+
+template <std::size_t I, class... Types>
+struct TypesListGetAtHelper2<I, ListOfTypes<Types...>> {
+    using type = typename TypesListGetAtHelper1<I, Types...>::type;
+};
+
+template <std::size_t I, class TypesListType>
+using TypesListGetAt = typename TypesListGetAtHelper2<I, TypesListType>::type;
+
+template <std::size_t I, class... Types>
+using TypesPackGetAt = typename TypesListGetAtHelper1<I, Types...>::type;
+
+struct Pair {
     size_t rows{};
     size_t columns{};
 };
 
 #define S(N, M)                  \
-    SizePair {            \
+    Pair {            \
         .rows = N, .columns = M, \
     }
 
@@ -59,50 +62,6 @@ struct Params {
     int rho_fluid;
     float g;
 };
-
-
-//template <class PElementType,
-//        class VelocityElementType,
-//        class VelocityFlowElementType,
-//        std::size_t Rows    = mxSize,
-//        std::size_t Columns = mxSize>
-//void start_simulation(const std::vector<std::vector<char>>& field, const Params params) {
-////    using SimulationSessionType = SimulationSession<PElementType, VelocityElementType,
-////            VelocityFlowElementType, Rows, Columns>;
-////    SimulationSessionType{field}.start();
-//    SmartFluidSim<PElementType, VelocityElementType, VelocityFlowElementType, Rows, Columns>
-//            {field, params.rho_air, params.rho_fluid, params.g}.run();
-//}
-//
-//template <class PElementType,
-//        class VelocityElementType,
-//        class VelocityFlowElementType,
-//        SizePair StaticSize,
-//        SizePair... StaticSizes>
-//void select_size_and_start_simulation_impl(const std::vector<std::vector<char>>& field, const Params params) {
-//    if (StaticSize.rows == field.size() && StaticSize.columns == field.front().size()) {
-//        start_simulation<PElementType, VelocityElementType, VelocityFlowElementType,
-//                StaticSize.rows, StaticSize.columns>(field, params);
-//    } else if constexpr (sizeof...(StaticSizes) == 0) {
-//        start_simulation<PElementType, VelocityElementType, VelocityFlowElementType>(field, params);
-//    } else {
-//        select_size_and_start_simulation_impl<PElementType, VelocityElementType,
-//                VelocityFlowElementType, StaticSizes...>(field, params);
-//    }
-//}
-//
-//template <class PElementType,
-//        class VelocityElementType,
-//        class VelocityFlowElementType,
-//        SizePair... StaticSizes>
-//void select_size_and_start_simulation(const std::vector<std::vector<char>>& field, const Params params) {
-//    if constexpr (sizeof...(StaticSizes) > 0) {
-//        select_size_and_start_simulation_impl<PElementType, VelocityElementType,
-//                VelocityFlowElementType, StaticSizes...>(field, params);
-//    } else {
-//        start_simulation<PElementType, VelocityElementType, VelocityFlowElementType>(field, params);
-//    }
-//}
 
 template <class type_p,
         class type_v,
@@ -116,8 +75,8 @@ void run_fluid_sim(const vector<vector<char>>& field, const Params params) {
 template <class type_p,
         class type_v,
         class type_vf,
-        SizePair curSize,
-        SizePair... Sizes>
+        Pair curSize,
+        Pair... Sizes>
 void choose_static_sizes_impl(const vector<vector<char>>& field, const Params params) {
     static_assert(curSize.rows > 0);
     static_assert(curSize.columns > 0);
@@ -134,7 +93,7 @@ void choose_static_sizes_impl(const vector<vector<char>>& field, const Params pa
 template <class type_p,
         class type_v,
         class type_vf,
-                SizePair... Sizes>
+                Pair... Sizes>
 void choose_static_sizes(const vector<vector<char>>& field, const Params params) {
     if constexpr (sizeof...(Sizes) > 0) {
         choose_static_sizes_impl<type_p, type_v,
@@ -145,16 +104,190 @@ void choose_static_sizes(const vector<vector<char>>& field, const Params params)
 }
 
 #define SIZES S(10, 10), S(36,84)
+#define TYPES FIXED(32, 16),FLOAT,DOUBLE,FAST_FIXED(32, 16)
+template <class kDefinedTypes, class kSelectedTypes, Pair... Sizes>
+class TypesSelector;
 
-//#ifdef SIZES
-//
-//using Simulator = Sim<Fixed<32, 16>, FastFixed<64, 16>, Fixed<32, 16>, SIZES>;
-//
-//#else
-//
-//using Simulator = types::Simulator<types::TypesList<TYPES>>;
-//
-//#endif
+template <class... DefinedTypes, class... SelectedTypes,
+        Pair... Sizes>
+class TypesSelector<ListOfTypes<DefinedTypes...>,
+        ListOfTypes<SelectedTypes...>,
+        Sizes...> {
+
+    static constexpr bool IsThereFloat =
+            disjunction_v<is_same<DefinedTypes, FLOAT>...>;
+
+    static constexpr bool IsThereDouble =
+            disjunction_v<is_same<DefinedTypes, DOUBLE>...>;
+
+public:
+    static bool parse_params(string_view type_name,
+                                       string_view prefix,
+                                       string_view suffix,
+                                       size_t& n,
+                                       size_t& k) {
+        if (!type_name.starts_with(prefix)) {
+            return false;
+        }
+        type_name.remove_prefix(prefix.size());
+
+        if (!type_name.ends_with(suffix)) {
+            return false;
+        }
+        type_name.remove_suffix(suffix.size());
+
+        const size_t sep_char_pos = type_name.find(',');
+        if (sep_char_pos >= type_name.size()) {
+            return false;
+        }
+
+        auto strip_sv = [](string_view s) noexcept {
+            while (!s.empty() && isspace(s.front())) {
+                s.remove_prefix(1);
+            }
+            while (!s.empty() && isspace(s.back())) {
+                s.remove_suffix(1);
+            }
+            return s;
+        };
+        const string_view n_str = strip_sv(type_name.substr(0, sep_char_pos));
+        const string_view k_str = strip_sv(type_name.substr(sep_char_pos + 1));
+
+        if (from_chars(n_str.data(), n_str.data() + n_str.size(), n).ec != errc{}) {
+            return false;
+        }
+
+        if (from_chars(k_str.data(), k_str.data() + k_str.size(), k).ec != errc{}) {
+            return false;
+        }
+
+        return n > 0 && k > 0;
+    }
+
+
+
+    template <class... Args>
+    static void handle_types(const vector<vector<char>>& field, Params& params,
+                                                          std::string_view type_name,
+                                                          Args... type_names) {
+        if (IsThereFloat && type_name == kFloatTypeName) {
+            get_next_type<float, Args...>(field, params, type_names...);
+            return;
+        }
+        if (IsThereDouble && type_name == kDoubleTypeName) {
+            get_next_type<double, Args...>(field, params, type_names...);
+            return;
+        }
+
+        size_t n;
+        size_t k;
+        if (parse_params(type_name, kFastFixedPrefix, kFastFixedSuffix, n, k)) {
+            if (handle_fixed_type<true, Args...>(n, k, field, params,
+                                                                          type_names...)) {
+                return;
+            }
+        }
+        if (parse_params(type_name, kFixedPrefix, kFixedSuffix, n, k)) {
+            if (handle_fixed_type<false, Args...>(n, k, field, params,
+                                                                           type_names...)) {
+                return;
+            }
+        }
+
+        throw invalid_argument("Could not parse type " + std::string{type_name});
+    }
+
+    template <class FloatType, class... Args>
+    static void get_next_type(const vector<vector<char>>& field, Params& params, const Args&... type_names) {
+        if constexpr (sizeof...(type_names) > 0) {
+            using kDefinedTypes  = ListOfTypes<DefinedTypes...>;
+            using kSelectedTypes = ListOfTypes<SelectedTypes..., FloatType>;
+            TypesSelector<kDefinedTypes, kSelectedTypes, Sizes...>::
+            handle_types(field, params, type_names...);
+        } else {
+            choose_static_sizes<SelectedTypes..., FloatType, Sizes...>(
+                    field, params);
+        }
+    }
+
+
+    template <bool Fast, class... Args>
+    static bool handle_fixed_type(std::size_t n,
+                                                           std::size_t k,
+                                                           const vector<vector<char>>& field,
+                                                            Params& params,
+                                                           Args... type_names) {
+        return handle_fixed_type_impl<0, Fast, Args...>(n, k, field, params,
+                                                                                 type_names...);
+    }
+
+    template <std::size_t I, bool Fast, class... Args>
+    static bool handle_fixed_type_impl(std::size_t n,
+                                                                std::size_t k,
+                                                                const vector<vector<char>>& field,
+                                                                Params& params,
+                                                                Args... type_names) {
+        using FloatType = TypesPackGetAt<I, DefinedTypes...>;
+
+//        cout << typeid(FloatType).name() << endl;
+//        bool b = (requires {
+//            {
+//            FloatType::kFast == bool {}
+//            } -> std::same_as<bool>;
+//        });
+        if constexpr (requires {
+            {
+            FloatType::kNValue == std::size_t {}
+            } -> std::same_as<bool>;
+            {
+            FloatType::kKValue == std::size_t {}
+            } -> std::same_as<bool>;
+            {
+            FloatType::kFast == bool {}
+            } -> std::same_as<bool>;
+        })
+        {
+            if constexpr (FloatType::kFast == Fast) {
+                if (FloatType::kNValue == n && FloatType::kKValue == k) {
+                    get_next_type<FloatType, Args...>(field, params, type_names...);
+                    return true;
+                }
+            }
+        }
+
+        if constexpr (I + 1 < sizeof...(DefinedTypes)) {
+            return handle_fixed_type_impl<I + 1, Fast, Args...>(
+                    n, k, field, params, type_names...);
+        }
+
+        return false;
+    }
+};
+
+template <class TypesListType, Pair... Sizes>
+class MainSim;
+
+struct SimulationParams {
+    string_view p_type{};
+    string_view v_type{};
+    string_view vf_type{};
+};
+
+template <class... FloatTypes, Pair... Sizes>
+class MainSim<ListOfTypes<FloatTypes...>, Sizes...> {
+public:
+    MainSim (SimulationParams params1) : given_types(params1){
+
+    }
+    SimulationParams given_types;
+    void start_on_field(const std::vector<std::vector<char>>& field, Params& params) const {
+        TypesSelector<ListOfTypes<FloatTypes...>, ListOfTypes<>, Sizes...>::
+        handle_types(
+                field, params, given_types.p_type, given_types.v_type, given_types.vf_type);
+    }
+
+};
+
 
 signed main() {
     ifstream fin;
@@ -169,49 +302,8 @@ signed main() {
     fin >> N >> M;
     float rho_air, g;
     int rho_fluid;
-//    char field1[N][M + 1] = {
-//            "####################################################################################",
-//            "#                                                                                  #",
-//            "#                                                                                  #",
-//            "#                                                                                  #",
-//            "#                                                                                  #",
-//            "#                                                                                  #",
-//            "#                                       .........                                  #",
-//            "#..............#            #           .........                                  #",
-//            "#..............#            #           .........                                  #",
-//            "#..............#            #           .........                                  #",
-//            "#..............#            #                                                      #",
-//            "#..............#            #                                                      #",
-//            "#..............#            #                                                      #",
-//            "#..............#            #                                                      #",
-//            "#..............#............#                                                      #",
-//            "#..............#............#                                                      #",
-//            "#..............#............#                                                      #",
-//            "#..............#............#                                                      #",
-//            "#..............#............#                                                      #",
-//            "#..............#............#                                                      #",
-//            "#..............#............#                                                      #",
-//            "#..............#............#                                                      #",
-//            "#..............#............################                     #                 #",
-//            "#...........................#....................................#                 #",
-//            "#...........................#....................................#                 #",
-//            "#...........................#....................................#                 #",
-//            "##################################################################                 #",
-//            "#                                                                                  #",
-//            "#                                                                                  #",
-//            "#                                                                                  #",
-//            "#                                                                                  #",
-//            "#                                                                                  #",
-//            "#                                                                                  #",
-//            "#                                                                                  #",
-//            "#                                                                                  #",
-//            "####################################################################################",
-//    };
-    //char field[N][M + 1];
     string line;
     vector<vector<char>> field(N, vector<char>(M + 1));
-//    char c;
-//    fin >> c;
     fin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     for (int i = 0; i < N; ++i) {
         getline(fin, line);
@@ -222,51 +314,15 @@ signed main() {
             }
         }
     }
-//    for (int i = 0; i < N; ++i) {
-//        for (int j = 0; j < M + 1; ++j) {
-//            if (field[i][j] != field1[i][j]) {
-//                cout << i << ' ' << j << ' ' << field[i][j] << ' ' << field1[i][j] << endl;
-//                return 0;
-//            }
-//        }
-//    }
-   // for ()
+
     fin >> rho_air >> rho_fluid >> g;
-//    FluidSim q = FluidSim<Fixed<32, 16>, FastFixed<64, 16>, Fixed<32, 16>, N, M>(field, rho_air, rho_fluid, g);
-//    q.run();
     fin.close();
     Params params = Params{rho_air, rho_fluid, g};
-    choose_static_sizes<Fixed<32, 16>, Fixed<32, 16>, Fixed<32, 16>, SIZES>(field, params);
+    //choose_static_sizes<float, FastFixed<32, 16>, Fixed<32, 16>, SIZES>(field, params);
+    MainSim sim = MainSim<ListOfTypes<TYPES>, SIZES>(SimulationParams{
+            .p_type      = "FLOAT",
+            .v_type      = "FIXED(32, 16)",
+            .vf_type = "FAST_FIXED(32, 16)",
+    });
+    sim.start_on_field(field, params);
 }
-
-//#include "simulation.h"
-//#define TYPES FLOAT,FIXED(32, 5)
-//#define SIZES S(1, 1)
-//#ifndef TYPES
-//#error "TYPES is not defined"
-//#endif
-//
-//#ifdef SIZES
-//
-//using Simulator = types::Simulator<types::TypesList<TYPES>, SIZES>;
-//
-//#else
-//
-//using Simulator = types::Simulator<types::TypesList<TYPES>>;
-//
-//#endif
-//
-//int main() {
-//    const Simulator simulator = Simulator::from_params(types::SimulationParams{
-//            .p_type_name      = "FLOAT",
-//            .v_type_name      = "FIXED(32, 5)",
-//            .v_flow_type_name = "DOUBLE",
-//    });
-//
-//    simulator.start_on_field(std::vector<std::vector<char>>{
-//            {'#', '#', '#', '#', '#'},
-//            {'#', '#', '.', '.', '#'},
-//            {'#', ' ', ' ', ' ', '#'},
-//            {'#', '#', '#', '#', '#'},
-//    });
-//}

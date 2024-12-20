@@ -121,7 +121,14 @@ public:
     }
 
     type_p random01() {
-        return type_p::from_raw((rnd() & ((1 << type_p::getK()) - 1)));
+        if constexpr (std::is_same<type_p, float>::value) {
+            return static_cast<type_p>(float(rnd()) / rnd.max());
+        } else if constexpr (std::is_same<type_p, double>::value) {
+            return static_cast<type_p>(double(rnd()) / rnd.max());
+        } else {
+            return type_p::from_raw((rnd() & ((1 << type_p::getK()) - 1)));
+        }
+
     }
 
     void propagate_stop(int x, int y, bool force = false) {
@@ -192,7 +199,7 @@ public:
                 break;
             }
 
-            Fixed p = random01() * sum;
+            auto p = static_cast<type_p>(random01() * sum);
             size_t d = std::ranges::upper_bound(tres, p) - tres.begin();
 
             auto [dx, dy] = deltas[d];
@@ -229,14 +236,14 @@ public:
             if (field[nx][ny] != '#' && last_use[nx][ny] < UT) {
                 auto cap = velocity.get(x, y, dx, dy);
                 auto flow = velocity_flow.get(x, y, dx, dy);
-                if (flow == cap) {
+                if (flow == static_cast<type_vf>(cap)) {
                     continue;
                 }
                 // assert(v >= velocity_flow.get(x, y, dx, dy));
-                type_v res = cap - flow;
+                type_v res = cap - static_cast<type_v>(flow);
                 auto vp = min(lim, static_cast<type_p>(res));
                 if (last_use[nx][ny] == UT - 1) {
-                    velocity_flow.add(x, y, dx, dy, vp);
+                    velocity_flow.add(x, y, dx, dy, static_cast<type_vf>(vp));
                     last_use[x][y] = UT;
                     // cerr << x << " " << y << " -> " << nx << " " << ny << " " << vp << " / " << lim << "\n";
                     return {vp, 1, {nx, ny}};
@@ -244,7 +251,7 @@ public:
                 auto [t, prop, end] = propagate_flow(nx, ny, vp);
                 ret += t;
                 if (prop) {
-                    velocity_flow.add(x, y, dx, dy, t);
+                    velocity_flow.add(x, y, dx, dy, static_cast<type_vf>(t));
                     last_use[x][y] = UT;
                     // cerr << x << " " << y << " -> " << nx << " " << ny << " " << t << " / " << lim << "\n";
                     return {t, prop && end != pair(x, y), end};
@@ -304,7 +311,7 @@ public:
                             }
                             force -= static_cast<type_p>(contr) * rho[(int) field[nx][ny]];
                             contr = 0;
-                            velocity.add(x, y, dx, dy, force / rho[(int) field[x][y]]);
+                            velocity.add(x, y, dx, dy, static_cast<type_v>(force / rho[(int) field[x][y]]));
                             //int q =
                             p[x][y] -= force / static_cast<type_p>(dirs[x][y]);
                             total_delta_p -= force / static_cast<type_p>(dirs[x][y]);
@@ -340,9 +347,9 @@ public:
                         auto old_v = velocity.get(x, y, dx, dy);
                         auto new_v = velocity_flow.get(x, y, dx, dy);
                         if (old_v > static_cast<type_v>(0)) {
-                            assert(new_v <= old_v);
-                            velocity.get(x, y, dx, dy) = new_v;
-                            auto force = (old_v - new_v) * rho[(int) field[x][y]];
+                            assert(new_v <= static_cast<type_vf>(old_v));
+                            velocity.get(x, y, dx, dy) = static_cast<type_v>(new_v);
+                            auto force = static_cast<type_p>((old_v - static_cast<type_v>(new_v))) * rho[(int) field[x][y]];
                             if (field[x][y] == '.')
                                 force *= static_cast<type_p>(0.8);
                             if (field[x + dx][y + dy] == '#') {

@@ -88,9 +88,6 @@
 		<Unit filename="/mnt/c/MyDoc/HSEprogramming/fluid/fluid/fluid.cpp">
 			<Option target="fluid"/>
 		</Unit>
-		<Unit filename="/mnt/c/MyDoc/HSEprogramming/fluid/fluid/simulation.h">
-			<Option target="fluid"/>
-		</Unit>
 		<Unit filename="/mnt/c/MyDoc/HSEprogramming/fluid/fluid/CMakeLists.txt">
 			<Option virtualFolder="CMake Files\"/>
 		</Unit>
