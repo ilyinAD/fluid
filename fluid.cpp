@@ -12,10 +12,6 @@ using namespace std;
 
 inline constexpr std::string_view kFloatTypeName   = STRINGIFY_EXACT_NO_EVAL(FLOAT);
 inline constexpr std::string_view kDoubleTypeName  = STRINGIFY_EXACT_NO_EVAL(DOUBLE);
-inline constexpr std::string_view kFastFixedPrefix = "FAST_FIXED(";
-inline constexpr std::string_view kFastFixedSuffix = ")";
-inline constexpr std::string_view kFixedPrefix     = "FIXED(";
-inline constexpr std::string_view kFixedSuffix     = ")";
 
 #undef STRINGIFY_EXACT_NO_EVAL
 
@@ -23,29 +19,18 @@ template <class... Types>
 struct ListOfTypes;
 
 template <std::size_t I, class Type, class... Types>
-struct TypesListGetAtHelper1 {
+struct Iter {
     static_assert(I < 1 + sizeof...(Types));
-    using type = typename TypesListGetAtHelper1<I - 1, Types...>::type;
+    using type = typename Iter<I - 1, Types...>::type;
 };
 
 template <class Type, class... Types>
-struct TypesListGetAtHelper1<0, Type, Types...> {
+struct Iter<0, Type, Types...> {
     using type = Type;
 };
 
-template <std::size_t I, class TypesListType>
-struct TypesListGetAtHelper2;
-
 template <std::size_t I, class... Types>
-struct TypesListGetAtHelper2<I, ListOfTypes<Types...>> {
-    using type = typename TypesListGetAtHelper1<I, Types...>::type;
-};
-
-template <std::size_t I, class TypesListType>
-using TypesListGetAt = typename TypesListGetAtHelper2<I, TypesListType>::type;
-
-template <std::size_t I, class... Types>
-using TypesPackGetAt = typename TypesListGetAtHelper1<I, Types...>::type;
+using GetAtI = typename Iter<I, Types...>::type;
 
 struct Pair {
     size_t rows{};
@@ -78,8 +63,6 @@ template <class type_p,
         Pair curSize,
         Pair... Sizes>
 void choose_static_sizes_impl(const vector<vector<char>>& field, const Params params) {
-    static_assert(curSize.rows > 0);
-    static_assert(curSize.columns > 0);
     if (curSize.rows == field.size() && curSize.columns == field.front().size() - 1) {
         run_fluid_sim<type_p, type_v, type_vf, curSize.rows, curSize.columns + 1>(field, params);
     } else if constexpr (sizeof...(Sizes) == 0) {
@@ -121,50 +104,34 @@ class TypesSelector<ListOfTypes<DefinedTypes...>,
             disjunction_v<is_same<DefinedTypes, DOUBLE>...>;
 
 public:
-    static bool parse_params(string_view type_name,
-                                       string_view prefix,
-                                       string_view suffix,
-                                       size_t& n,
-                                       size_t& k) {
-        if (!type_name.starts_with(prefix)) {
-            return false;
-        }
-        type_name.remove_prefix(prefix.size());
 
-        if (!type_name.ends_with(suffix)) {
-            return false;
-        }
-        type_name.remove_suffix(suffix.size());
+    static bool parse_fixed_string(string_view input, size_t& n, size_t& k) {
+        string_view prefix_fixed = "FIXED(";
+        string_view prefix_fast_fixed = "FAST_FIXED(";
 
-        const size_t sep_char_pos = type_name.find(',');
-        if (sep_char_pos >= type_name.size()) {
+        if (input.substr(0, prefix_fixed.size()) == prefix_fixed) {
+            input.remove_prefix(prefix_fixed.size());
+        } else if (input.substr(0, prefix_fast_fixed.size()) == prefix_fast_fixed) {
+            input.remove_prefix(prefix_fast_fixed.size());
+        } else {
             return false;
         }
 
-        auto strip_sv = [](string_view s) noexcept {
-            while (!s.empty() && isspace(s.front())) {
-                s.remove_prefix(1);
-            }
-            while (!s.empty() && isspace(s.back())) {
-                s.remove_suffix(1);
-            }
-            return s;
-        };
-        const string_view n_str = strip_sv(type_name.substr(0, sep_char_pos));
-        const string_view k_str = strip_sv(type_name.substr(sep_char_pos + 1));
-
-        if (from_chars(n_str.data(), n_str.data() + n_str.size(), n).ec != errc{}) {
-            return false;
+        size_t pos = 0;
+        n = atoi(input.data());
+        while (pos < input.size() && isdigit(input[pos])) {
+            ++pos;
         }
-
-        if (from_chars(k_str.data(), k_str.data() + k_str.size(), k).ec != errc{}) {
-            return false;
+        if (pos >= input.size() || input[pos] != ',') {
+           return false;
         }
-
-        return n > 0 && k > 0;
+        ++pos;
+        while (pos < input.size() && isspace(input[pos])) {
+            ++pos;
+        }
+        k = atoi(input.data() + pos);
+        return true;
     }
-
-
 
     template <class... Args>
     static void handle_types(const vector<vector<char>>& field, Params& params,
@@ -181,14 +148,14 @@ public:
 
         size_t n;
         size_t k;
-        if (parse_params(type_name, kFastFixedPrefix, kFastFixedSuffix, n, k)) {
-            if (handle_fixed_type<true, Args...>(n, k, field, params,
+        if (parse_fixed_string(type_name, n, k)) {
+            if (handle_fixed_type<0, true, Args...>(n, k, field, params,
                                                                           type_names...)) {
                 return;
             }
         }
-        if (parse_params(type_name, kFixedPrefix, kFixedSuffix, n, k)) {
-            if (handle_fixed_type<false, Args...>(n, k, field, params,
+        if (parse_fixed_string(type_name, n, k)) {
+            if (handle_fixed_type<0, false, Args...>(n, k, field, params,
                                                                            type_names...)) {
                 return;
             }
@@ -210,31 +177,14 @@ public:
         }
     }
 
-
-    template <bool Fast, class... Args>
+    template <std::size_t I, bool IsFast, class... Args>
     static bool handle_fixed_type(std::size_t n,
-                                                           std::size_t k,
-                                                           const vector<vector<char>>& field,
-                                                            Params& params,
-                                                           Args... type_names) {
-        return handle_fixed_type_impl<0, Fast, Args...>(n, k, field, params,
-                                                                                 type_names...);
-    }
-
-    template <std::size_t I, bool Fast, class... Args>
-    static bool handle_fixed_type_impl(std::size_t n,
                                                                 std::size_t k,
                                                                 const vector<vector<char>>& field,
                                                                 Params& params,
                                                                 Args... type_names) {
-        using FloatType = TypesPackGetAt<I, DefinedTypes...>;
+        using FloatType = GetAtI<I, DefinedTypes...>;
 
-//        cout << typeid(FloatType).name() << endl;
-//        bool b = (requires {
-//            {
-//            FloatType::kFast == bool {}
-//            } -> std::same_as<bool>;
-//        });
         if constexpr (requires {
             {
             FloatType::kNValue == std::size_t {}
@@ -247,7 +197,7 @@ public:
             } -> std::same_as<bool>;
         })
         {
-            if constexpr (FloatType::kFast == Fast) {
+            if constexpr (FloatType::kFast == IsFast) {
                 if (FloatType::kNValue == n && FloatType::kKValue == k) {
                     get_next_type<FloatType, Args...>(field, params, type_names...);
                     return true;
@@ -256,38 +206,13 @@ public:
         }
 
         if constexpr (I + 1 < sizeof...(DefinedTypes)) {
-            return handle_fixed_type_impl<I + 1, Fast, Args...>(
+            return handle_fixed_type<I + 1, IsFast, Args...>(
                     n, k, field, params, type_names...);
         }
 
         return false;
     }
 };
-
-template <class TypesListType, Pair... Sizes>
-class MainSim;
-
-struct SimulationParams {
-    string_view p_type{};
-    string_view v_type{};
-    string_view vf_type{};
-};
-
-template <class... FloatTypes, Pair... Sizes>
-class MainSim<ListOfTypes<FloatTypes...>, Sizes...> {
-public:
-    MainSim (SimulationParams params1) : given_types(params1){
-
-    }
-    SimulationParams given_types;
-    void start_on_field(const std::vector<std::vector<char>>& field, Params& params) const {
-        TypesSelector<ListOfTypes<FloatTypes...>, ListOfTypes<>, Sizes...>::
-        handle_types(
-                field, params, given_types.p_type, given_types.v_type, given_types.vf_type);
-    }
-
-};
-
 
 signed main() {
     ifstream fin;
@@ -318,11 +243,8 @@ signed main() {
     fin >> rho_air >> rho_fluid >> g;
     fin.close();
     Params params = Params{rho_air, rho_fluid, g};
-    //choose_static_sizes<float, FastFixed<32, 16>, Fixed<32, 16>, SIZES>(field, params);
-    MainSim sim = MainSim<ListOfTypes<TYPES>, SIZES>(SimulationParams{
-            .p_type      = "FLOAT",
-            .v_type      = "FIXED(32, 16)",
-            .vf_type = "FAST_FIXED(32, 16)",
-    });
-    sim.start_on_field(field, params);
+
+    TypesSelector<ListOfTypes<TYPES>, ListOfTypes<>, SIZES>::
+    handle_types(
+            field, params, "FLOAT", "FIXED(32, 16)", "FAST_FIXED(32, 16)");
 }
