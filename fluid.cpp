@@ -1,4 +1,4 @@
-//гуглил гптшил говнокодил, так как на лекциях ничего подобного не было(, но вроде разобрался и могу пояснить как тут все работает)
+//гуглил страдал гптшил говнокодил курил стоял много у окна плакал, так как на лекциях ничего подобного не было(, но вроде разобрался и могу пояснить как тут все работает)
 #include <bits/stdc++.h>
 #include "oldfiles/FluidSim.h"
 #include "SmartFluidSim.h"
@@ -177,7 +177,7 @@ public:
         }
     }
 
-    template <std::size_t I, bool IsFast, class... Args>
+    template <size_t I, bool IsFast, class... Args>
     static bool handle_fixed_type(std::size_t n,
                                                                 std::size_t k,
                                                                 const vector<vector<char>>& field,
