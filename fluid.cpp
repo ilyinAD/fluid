@@ -8,12 +8,8 @@ using namespace std;
 #define FAST_FIXED(N, K) FastFixed<N, K>
 #define FIXED(N, K)      Fixed<N, K>
 
-#define STRINGIFY_EXACT_NO_EVAL(expr) #expr
-
-inline constexpr std::string_view kFloatTypeName   = STRINGIFY_EXACT_NO_EVAL(FLOAT);
-inline constexpr std::string_view kDoubleTypeName  = STRINGIFY_EXACT_NO_EVAL(DOUBLE);
-
-#undef STRINGIFY_EXACT_NO_EVAL
+constexpr std::string_view kFloatTypeName   = "FLOAT";
+constexpr std::string_view kDoubleTypeName  = "DOUBLE";
 
 template <class... Types>
 struct ListOfTypes;
@@ -105,13 +101,19 @@ class TypesSelector<ListOfTypes<DefinedTypes...>,
 
 public:
 
-    static bool parse_fixed_string(string_view input, size_t& n, size_t& k) {
+    static bool parse_fixed_string(string_view input, size_t& n, size_t& k, bool isFast) {
         string_view prefix_fixed = "FIXED(";
         string_view prefix_fast_fixed = "FAST_FIXED(";
 
         if (input.substr(0, prefix_fixed.size()) == prefix_fixed) {
+            if (isFast == true) {
+                return false;
+            }
             input.remove_prefix(prefix_fixed.size());
         } else if (input.substr(0, prefix_fast_fixed.size()) == prefix_fast_fixed) {
+            if (isFast == false) {
+                return false;
+            }
             input.remove_prefix(prefix_fast_fixed.size());
         } else {
             return false;
@@ -148,13 +150,13 @@ public:
 
         size_t n;
         size_t k;
-        if (parse_fixed_string(type_name, n, k)) {
+        if (parse_fixed_string(type_name, n, k, true)) {
             if (handle_fixed_type<0, true, Args...>(n, k, field, params,
                                                                           type_names...)) {
                 return;
             }
         }
-        if (parse_fixed_string(type_name, n, k)) {
+        if (parse_fixed_string(type_name, n, k, false)) {
             if (handle_fixed_type<0, false, Args...>(n, k, field, params,
                                                                            type_names...)) {
                 return;
@@ -187,18 +189,18 @@ public:
 
         if constexpr (requires {
             {
-            FloatType::kNValue == std::size_t {}
+            FloatType::Nval == std::size_t {}
             } -> std::same_as<bool>;
             {
-            FloatType::kKValue == std::size_t {}
+            FloatType::Kval == std::size_t {}
             } -> std::same_as<bool>;
             {
-            FloatType::kFast == bool {}
+            FloatType::IsFast == bool {}
             } -> std::same_as<bool>;
         })
         {
-            if constexpr (FloatType::kFast == IsFast) {
-                if (FloatType::kNValue == n && FloatType::kKValue == k) {
+            if constexpr (FloatType::IsFast == IsFast) {
+                if (FloatType::Nval == n && FloatType::Kval == k) {
                     get_next_type<FloatType, Args...>(field, params, type_names...);
                     return true;
                 }

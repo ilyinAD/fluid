@@ -16,44 +16,42 @@ class Fixed;
 template <size_t N, size_t K>
 class FastFixed {
     static constexpr size_t AdjustedN = (N <= 8) ? 8 : (N <= 16) ? 16 : (N <= 32) ? 32 : 64;
-    static_assert(K < AdjustedN, "K must be less than the adjusted N");
-
-    using storage_type = std::conditional_t<AdjustedN == 8, int_fast8_t,
+    using fast_int_type = std::conditional_t<AdjustedN == 8, int_fast8_t,
             std::conditional_t<AdjustedN == 16, int_fast16_t,
                     std::conditional_t<AdjustedN == 32, int_fast32_t, int_fast64_t>>>;
 
-    storage_type v;
+    fast_int_type v;
 
-    constexpr static storage_type scaling_factor = 1ULL << K;
+    constexpr static fast_int_type scaling_factor = 1ULL << K;
 
 public:
-    static constexpr std::size_t kNValue = N;
-    static constexpr std::size_t kKValue = K;
-    static constexpr bool kFast          = true;
+    static constexpr std::size_t Nval = N;
+    static constexpr std::size_t Kval = K;
+    static constexpr bool IsFast          = true;
     constexpr FastFixed(int value) : v(value << K) {}
-    constexpr FastFixed(float value) : v(static_cast<storage_type>(value * scaling_factor)) {}
-    constexpr FastFixed(double value) : v(static_cast<storage_type>(value * scaling_factor)) {}
+    constexpr FastFixed(float value) : v(static_cast<fast_int_type>(value * scaling_factor)) {}
+    constexpr FastFixed(double value) : v(static_cast<fast_int_type>(value * scaling_factor)) {}
     template <size_t N2, size_t K2>
     constexpr FastFixed(const FastFixed<N2, K2>& other) {
         if constexpr (K2 > K) {
-            v = static_cast<storage_type>(other.raw_value() >> (K2 - K));
+            v = static_cast<fast_int_type>(other.raw_value() >> (K2 - K));
         } else {
-            v = static_cast<storage_type>(other.raw_value() << (K - K2));
+            v = static_cast<fast_int_type>(other.raw_value() << (K - K2));
         }
     }
 
     template <size_t N2, size_t K2>
     constexpr FastFixed(const Fixed<N2, K2>& other) {
         if constexpr (K2 > K) {
-            v = static_cast<storage_type>(other.raw_value() >> (K2 - K));
+            v = static_cast<fast_int_type>(other.raw_value() >> (K2 - K));
         } else {
-            v = static_cast<storage_type>(other.raw_value() << (K - K2));
+            v = static_cast<fast_int_type>(other.raw_value() << (K - K2));
         }
     }
 
     constexpr FastFixed() : v(0) {}
 
-    constexpr static FastFixed from_raw(storage_type raw_value) {
+    constexpr static FastFixed from_raw(fast_int_type raw_value) {
         FastFixed result;
         result.v = raw_value;
         return result;
@@ -118,13 +116,13 @@ public:
     template <size_t N1, size_t K1>
     friend FastFixed operator*(FastFixed a, FastFixed<N1, K1> b) {
         using wide_type = typename std::conditional<N <= 32, int64_t, __int128>::type;
-        return FastFixed::from_raw(static_cast<storage_type>((static_cast<wide_type>(a.v) * static_cast<FastFixed<N, K>>(b).v) >> K));
+        return FastFixed::from_raw(static_cast<fast_int_type>((static_cast<wide_type>(a.v) * static_cast<FastFixed<N, K>>(b).v) >> K));
     }
 
     template <size_t N1, size_t K1>
     friend FastFixed operator/(FastFixed a, FastFixed<N1, K1> b) {
         using wide_type = typename std::conditional<N <= 32, int64_t, __int128>::type;
-        return FastFixed::from_raw(static_cast<storage_type>((static_cast<wide_type>(a.v) << K) / static_cast<FastFixed<N, K>>(b).v));
+        return FastFixed::from_raw(static_cast<fast_int_type>((static_cast<wide_type>(a.v) << K) / static_cast<FastFixed<N, K>>(b).v));
     }
 
     template <size_t N1, size_t K1>
@@ -172,7 +170,7 @@ public:
         return static_cast<double>(v) / scaling_factor;
     }
 
-    constexpr storage_type raw_value() const {
+    constexpr fast_int_type raw_value() const {
         return v;
     }
 

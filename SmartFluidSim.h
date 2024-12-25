@@ -14,23 +14,21 @@ class SmartFluidSim {
 public:
     static constexpr bool IsStatic = Rows != mxSize && Columns != mxSize;
 
-    template <class MatrixElementType>
-    using StaticMatrixStorage = std::array<std::array<MatrixElementType, Columns>, Rows>;
+    template <class ElType>
+    using StaticArray = std::array<std::array<ElType, Columns>, Rows>;
 
-    template <class MatrixElementType>
-    using DynamicMatrixStorage = std::vector<std::vector<MatrixElementType>>;
+    template <class ElType>
+    using DynamicArray = std::vector<std::vector<ElType>>;
 
-    template <class MatrixElementType>
-    using ArrayType = std::conditional_t<IsStatic,
-            StaticMatrixStorage<MatrixElementType>,
-            DynamicMatrixStorage<MatrixElementType>>;
+    template <class ElType>
+    using ArrayType = conditional_t<IsStatic,
+            StaticArray<ElType>,
+            DynamicArray<ElType>>;
 
     using Field = ArrayType<char>;
     Field field{};
 
     using Parray = ArrayType<type_p>;
-    using VelocityArray = ArrayType<type_v>;
-    using VelocityFlowArray = ArrayType<type_vf>;
     using IntArray = ArrayType<int>;
     type_p rho[256];
     size_t N, M;
@@ -118,6 +116,27 @@ public:
         M = field1.front().size() - 1;
         velocity.f(N, M);
         velocity_flow.f(N, M);
+    }
+
+    void saveToFile() {
+        ofstream fout;
+        fout.open("../saved.txt");
+        if (!fout) {
+            std::cerr << "Не удалось открыть файл! Ошибка: " << strerror(errno) << std::endl;
+            exit(0);
+        }
+
+        fout << N << " " << M << "\n";
+        for (const auto& row : field) {
+            for (char ch : row) {
+                if (ch != '\0') {
+                    fout << ch;
+                }
+            }
+            fout << "\n";
+        }
+
+        fout << rho[' '] << "\n" << rho['.'] << "\n" << g << "\n";
     }
 
     type_p random01() {
@@ -388,6 +407,10 @@ public:
                     cout << "\n";
                     //cout << field[x] << "\n";
                 }
+            }
+
+            if (i % 10 == 0) {
+                saveToFile();
             }
         }
     }
