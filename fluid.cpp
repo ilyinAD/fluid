@@ -218,6 +218,7 @@ public:
 
 signed main() {
     ifstream fin;
+    //если хотим сохраненную версию то читаем из saved.txt
     fin.open("../input.txt", ios_base::in);
     if (!fin) {
         std::cerr << "Не удалось открыть файл! Ошибка: " << strerror(errno) << std::endl;
