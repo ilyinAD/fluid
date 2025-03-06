@@ -1,6 +1,5 @@
 //гуглил страдал гптшил говнокодил курил стоял много у окна плакал, так как на лекциях ничего подобного не было(, но вроде разобрался и могу пояснить как тут все работает)
 #include <bits/stdc++.h>
-#include "oldfiles/FluidSim.h"
 #include "SmartFluidSim.h"
 using namespace std;
 #define FLOAT            float
