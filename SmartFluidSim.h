@@ -176,6 +176,7 @@ public:
 
 
 
+
     type_p move_prob(int x, int y) {
         type_p sum = 0;
         for (size_t i = 0; i < deltas.size(); ++i) {
